@@ -8,24 +8,14 @@
 
 <a href="https://www.buymeacoffee.com/fatwang2" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
-# 版本更新
-- V0.2.8，20260802，整体重构：移除为每个模型单独维护的入口文件（search2openai/groq/moonshot/gemini.js），统一为一套核心代码（src/core + 双入口 Node/Worker），任何 OpenAI 兼容 API（含 Gemini 官方 OpenAI 兼容端点、火山方舟等）开箱即用；支持流式与非流式；本地测试脚本 scripts/test-local.js
-- V0.2.7，20260802，重新维护：修复 SearXNG 搜索的 MAX_RESULTS 未定义错误；修复流式并行工具调用导致的 tool_call_id 重复；修复 Gemini 硬编码第三方镜像与模型名（新增 API_BASE 环境变量，默认官方地址）；搜索服务（search1api）无 key 或 key 失效时返回可读错误并引导注册；上游 API 错误（401/429 等）现在透传真实状态码与原因
-- V0.2.6，20240425，支持 SearXNG 免费搜索服务，有损支持 Moonshot 流式模式
-- V0.2.5，20240425，为了解决隐私担忧，开源搜索接口部分的代码
-- V0.2.4，20240424，支持 Groq 的llama-3、mistral等模型，速度起飞
-- V0.2.3，20240423，Cloudflare Worker版本支持Azure OpenAI；支持授权码，可自定义用户的请求key
-- V0.2.2，20240420，支持 Moonshot 的非流式模式
-- V0.2.1，20240310，支持Google、Bing、Duckduckgo、Search1API新闻类搜索；支持通过环境变量MAX_RESULTS调整搜索结果数量；支持通过环境变量CRAWL_RESULTS调整希望深度搜索的数量
-- V0.2.0，20240310，优化openai.js，cloudflare worker版本，这次速度真的更快了！
-
-更多历史更新，请参见 [版本记录](https://github.com/fatwang2/search2ai/releases)
-
 # S2A
 
-让你的大模型 API 支持联网，搜索、新闻、网页总结。大模型会根据你的输入判断是否联网，不是每次都联网搜索。不需要安装任何插件，也不需要更换 key，直接在你常用的三方客户端替换自定义地址即可，也支持自行部署，不会影响使用的其他功能，如画图、语音等。
+让你的大模型 API 支持联网搜索、新闻和网页总结。大模型会根据你的输入判断是否联网，不是每次都搜索。
 
-支持所有 OpenAI 兼容 API：OpenAI、Gemini（官方 OpenAI 兼容端点）、Moonshot、Groq、DeepSeek、火山方舟（Ark）、Azure OpenAI 等，通过环境变量切换，一套代码通用。
+- 无需安装插件、无需更换 key，在常用客户端里替换自定义地址即可
+- 支持所有 OpenAI 兼容 API：OpenAI、Gemini（官方 OpenAI 兼容端点）、Moonshot、Groq、DeepSeek、火山方舟、Azure OpenAI 等
+- 支持流式与非流式，不影响画图、语音等其他功能
+- 支持自行部署
 
 <table>
     <tr>
@@ -38,115 +28,52 @@
     </tr>
 </table>
 
-# 功能
-
-| 上游模型(任意 OpenAI 兼容 API) | 功能                 | 流式输出     | 部署方式                                    |
-| ------------------------------ | -------------------- | ------------ | ------------------------------------------- |
-| `OpenAI` / `Gemini` / `Moonshot` / `Groq` / `DeepSeek` / `火山方舟` 等 | 联网、新闻、内容爬取 | 流式、非流式 | 本地、Zeabur、Cloudflare Worker、Vercel |
-| `Azure OpenAI`（`OPENAI_TYPE=azure`） | 联网、新闻、内容爬取 | 流式、非流式 | 本地、Cloudflare Worker                 |
-
-# 使用
-
-**替换客户端自定义域名为你部署后的地址**
-
-<table>
-    <tr>
-        <td><img src="pictures/NextChat.png" alt="效果示例"></td>
-    </tr>
-</table>
-
-# 部署
-
-**Zeabur一键部署**
-
-点击按钮即可一键部署，修改环境变量
-
-[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/A4HGYF?referralCode=fatwang2)
-
-如需保持项目更新，建议先fork本仓库，再通过Zeabur部署你的分支
-
-[![Deployed on Zeabur](https://zeabur.com/deployed-on-zeabur-dark.svg)](https://zeabur.com?referralCode=fatwang2&utm_source=fatwang2&utm_campaign=oss)
+# 快速开始
 
 **本地部署**
 
-1. 克隆仓库到本地
-
-```
+```bash
 git clone https://github.com/fatwang2/search2ai
-```
-
-2. 复制 `.env.template` 为 `.env`，配置环境变量（搜索服务 key 必填）
-3. 安装依赖并启动服务
-
-```
+cd search2ai
 npm install
-npm start
+cp .env.template .env    # 配置搜索服务 key(必填)与 APIBASE
+npm start                # 默认端口 3014
 ```
 
-4. 端口3014，拼接后的完整地址如下，可根据客户端的需求配置apibase地址使用（如需https，需用nginx进行反代，网上教程很多）
+客户端自定义地址填 `http://localhost:3014/v1`，请求 key 随意（或用 `AUTH_KEYS` 限定）。
 
-```
-http://localhost:3014/v1/chat/completions
-```
+**Cloudflare Worker**
 
-**Cloudflare Worker部署**
+用 `wrangler.toml` 部署本仓库（入口 `src/entry/worker.js`），在 Worker 后台 Settings → Variables 配置环境变量，再绑定自定义域名即可。
 
-1. 用 `wrangler.toml` 部署本仓库（入口为 `src/entry/worker.js`），或 `npm install -g wrangler && wrangler deploy`
-2. 在 Worker 后台 Settings → Variables 配置环境变量（`APIBASE`、`SEARCH_SERVICE`、`SEARCH1API_KEY` 等）
-3. worker里配置触发器-自定义域名，国内直接访问worker的地址可能会出问题，需要替换为自定义域名
-   ![Alt text](pictures/域名.png)
+**Zeabur 一键部署**
 
-**Vercel部署**
+[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/A4HGYF?referralCode=fatwang2)
 
-入口为 `src/entry/node-server.js`（见 `vercel.json`）。注意：Vercel Serverless 有 10s 响应限制，长回答可能超时，生产环境建议用 Zeabur 或本地部署。
-
-一键部署
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Ffatwang2%2Fsearch2ai&env=SEARCH_SERVICE&envDescription=%E6%9A%82%E6%97%B6%E6%94%AF%E6%8C%81google%E3%80%81bing%E3%80%81serpapi%E3%80%81serper%E3%80%81duckduckgo%EF%BC%8C%E5%BF%85%E5%A1%AB)
-
-为保证更新，也可以先fork本项目后自己在vercel上部署
+如需保持项目更新，建议先 fork 本仓库再部署你的分支。
 
 # 环境变量
 
-该项目提供了一些额外的配置项，通过环境变量设置：
+| 变量 | 必填 | 说明 |
+| --- | --- | --- |
+| `SEARCH_SERVICE` | 是 | 搜索服务：`search1api`（推荐，注册送 100 积分）、`google`、`bing`、`serpapi`、`serper`、`searxng` |
+| `SEARCH1API_KEY` | 看情况 | 选 search1api 时必填，[注册](https://www.search1api.com/?utm_source=search2ai) |
+| `APIBASE` | 否 | 大模型上游地址，任意 OpenAI 兼容 API，默认 `https://api.openai.com` |
+| `AUTH_KEYS` | 否 | 允许的请求 key 列表（逗号分隔），配置后上游改用 `OPENAI_API_KEY` |
+| `OPENAI_API_KEY` | 否 | 配置 `AUTH_KEYS` 后，openai 上游使用的固定 key |
+| `OPENAI_TYPE` | 否 | `openai`（默认）或 `azure`；选 azure 需配 `RESOURCE_NAME` / `DEPLOY_NAME` / `API_VERSION` / `AZURE_API_KEY` |
+| `MAX_RESULTS` | 否 | 搜索结果条数，默认 `5` |
+| `CRAWL_RESULTS` | 否 | 深度搜索（抓取网页正文）数量，目前仅 search1api 支持，默认 `0` |
 
-| 环境变量 | 是否必须 | 描述 | 例子 |
-| --- | --- | --- | --- |
-| `SEARCH_SERVICE` | Yes | 搜索服务，选择什么服务就配置对应 key | `search1api, google, bing, serpapi, serper, duckduckgo, searxng` |
-| `SEARCH1API_KEY` | Yes* | 选 search1api 时必填（推荐，本项目配套搜索服务，注册免费送 100 积分，点击[链接](https://www.search1api.com/?utm_source=search2ai)） | `xxx` |
-| `APIBASE` | No | 大模型上游地址，任意 OpenAI 兼容 API | `https://api.openai.com`、`https://ark.cn-beijing.volces.com/api/v3`、`https://generativelanguage.googleapis.com/v1beta/openai` |
-| `MAX_RESULTS` | No | 搜索结果条数 | `5` |
-| `CRAWL_RESULTS` | No | 深度搜索（搜索后获取网页正文）数量，目前仅 search1api 支持 | `1` |
-| `BING_KEY` | No | 选 bing 搜索时必填，点击[链接](https://www.microsoft.com/en-us/bing/apis/bing-web-search-api)创建 | `xxx` |
-| `GOOGLE_CX` | No | 选 google 搜索时必填，Search engine ID，点击[链接](https://programmablesearchengine.google.com/controlpanel/create)创建 | `xxx` |
-| `GOOGLE_KEY` | No | 选 google 搜索时必填，API key，点击[链接](https://console.cloud.google.com/apis/credentials)创建 | `xxx` |
-| `SERPAPI_KEY` | No | 选 serpapi 时必填，免费 100 次/月，点击[链接](https://serpapi.com/)注册 | `xxx` |
-| `SERPER_KEY` | No | 选 serper 时必填，6 个月免费 2500 次，点击[链接](https://serper.dev/)注册 | `xxx` |
-| `SEARXNG_BASE_URL` | No | 选 searxng 时必填，自建 SearXNG 服务域名，需打开 json 模式 | `https://search.xxx.xxx` |
-| `OPENAI_TYPE` | No | 上游类型 | `openai`（默认）、`azure` |
-| `RESOURCE_NAME` | No | 选 azure 时必填 | `xxxx` |
-| `DEPLOY_NAME` | No | 选 azure 时必填 | `gpt-35-turbo` |
-| `API_VERSION` | No | 选 azure 时必填 | `2024-02-15-preview` |
-| `AZURE_API_KEY` | No | 选 azure 时必填 | `xxxx` |
-| `AUTH_KEYS` | No | 允许的请求 key 列表（逗号分隔）。配置后请求必须使用列表中的 key，上游改用 `OPENAI_API_KEY` / `AZURE_API_KEY`，适合给他人分享你的服务 | `1111,2222` |
-| `OPENAI_API_KEY` | No | 配置 `AUTH_KEYS` 后，openai 上游使用的固定 key | `sk-xxx` |
-
-\* 也支持 `google / bing / serpapi / serper / searxng`，任选其一即可。
+其它搜索服务 key（`GOOGLE_CX` / `GOOGLE_KEY` / `BING_KEY` / `SERPAPI_KEY` / `SERPER_KEY` / `SEARXNG_BASE_URL`）按所选服务对应配置，详见 [.env.template](.env.template)。
 
 # 本地测试
 
-```
+```bash
 cp .env.local.example .env.local   # 填入大模型 API Key 与搜索服务 Key
-npm test                            # 或 node scripts/test-local.js
+npm test
 ```
 
-# 后续迭代
+# 致谢
 
-- 升级 `ai` SDK 依赖（当前有高危漏洞待处理）
-- 为不支持 function calling 的模型增加"先搜后答"管线
-- 支持更多垂类搜索
-# 后续迭代
-
-- 修复Vercel项目流式输出问题
-- 提升流式输出的速度
-- 支持更多垂类搜索
+- [search1api](https://www.search1api.com) - 本项目配套搜索服务
