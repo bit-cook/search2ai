@@ -28,6 +28,17 @@
     </tr>
 </table>
 
+# 🚀 先注册搜索服务：Search1API
+
+本项目配套搜索服务 [**Search1API**](https://www.search1api.com/?utm_source=search2ai)，一个 key 聚合 Google / Bing / DuckDuckGo 等主流搜索引擎，注册免费送 100 积分，点击 👉 [**立即注册**](https://www.search1api.com/?utm_source=search2ai)
+
+配置方式（复制到 `.env` 或 Worker 环境变量）：
+
+```
+SEARCH_SERVICE=search1api
+SEARCH1API_KEY=你的_key
+```
+
 # 快速开始
 
 **本地部署**

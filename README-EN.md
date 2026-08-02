@@ -28,6 +28,17 @@ Give your LLM API web access: search, news, and page summarization. The model de
     </tr>
 </table>
 
+# 🚀 Register the Search Service First: Search1API
+
+The companion search service for this project is [**Search1API**](https://www.search1api.com/?utm_source=search2ai) — one key for Google / Bing / DuckDuckGo and more, with 100 free credits on signup. Click 👉 [**Sign up now**](https://www.search1api.com/?utm_source=search2ai)
+
+Configuration (add to `.env` or Worker environment variables):
+
+```
+SEARCH_SERVICE=search1api
+SEARCH1API_KEY=your_key
+```
+
 # Quick Start
 
 **Local deployment**
