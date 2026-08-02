@@ -2,18 +2,15 @@
   "name": "search2ai",
   "version": "0.1.0",
   "description": "联网大模型",
-  "main": "api/index.js",
+  "main": "src/entry/node-server.js",
   "scripts": {
-    "start": "node api/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/entry/node-server.js",
+    "dev": "node src/entry/node-server.js",
+    "test": "node scripts/test-local.js"
   },
   "author": "fatwang2",
   "license": "MIT",
   "dependencies": {
-    "ai": "^2.2.31",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "node-fetch": "^2.7.0",
-    "pump": "^3.0.0"
+    "dotenv": "^16.3.1"
   }
 }

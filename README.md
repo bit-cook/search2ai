@@ -9,6 +9,8 @@
 <a href="https://www.buymeacoffee.com/fatwang2" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 # 版本更新
+- V0.2.8，20260802，整体重构：移除为每个模型单独维护的入口文件（search2openai/groq/moonshot/gemini.js），统一为一套核心代码（src/core + 双入口 Node/Worker），任何 OpenAI 兼容 API（含 Gemini 官方 OpenAI 兼容端点、火山方舟等）开箱即用；支持流式与非流式；本地测试脚本 scripts/test-local.js
+- V0.2.7，20260802，重新维护：修复 SearXNG 搜索的 MAX_RESULTS 未定义错误；修复流式并行工具调用导致的 tool_call_id 重复；修复 Gemini 硬编码第三方镜像与模型名（新增 API_BASE 环境变量，默认官方地址）；搜索服务（search1api）无 key 或 key 失效时返回可读错误并引导注册；上游 API 错误（401/429 等）现在透传真实状态码与原因
 - V0.2.6，20240425，支持 SearXNG 免费搜索服务，有损支持 Moonshot 流式模式
 - V0.2.5，20240425，为了解决隐私担忧，开源搜索接口部分的代码
 - V0.2.4，20240424，支持 Groq 的llama-3、mistral等模型，速度起飞
@@ -21,7 +23,9 @@
 
 # S2A
 
-让你的 大模型 API 支持联网，搜索、新闻、网页总结，已支持OpenAI、Gemini、Moonshot(非流式)，大模型会根据你的输入判断是否联网，不是每次都联网搜索，不需要安装任何插件，也不需要更换key，直接在你常用的三方客户端替换自定义地址即可，也支持自行部署，不会影响使用的其他功能，如画图、语音等
+让你的大模型 API 支持联网，搜索、新闻、网页总结。大模型会根据你的输入判断是否联网，不是每次都联网搜索。不需要安装任何插件，也不需要更换 key，直接在你常用的三方客户端替换自定义地址即可，也支持自行部署，不会影响使用的其他功能，如画图、语音等。
+
+支持所有 OpenAI 兼容 API：OpenAI、Gemini（官方 OpenAI 兼容端点）、Moonshot、Groq、DeepSeek、火山方舟（Ark）、Azure OpenAI 等，通过环境变量切换，一套代码通用。
 
 <table>
     <tr>
@@ -36,13 +40,10 @@
 
 # 功能
 
-| 模型             | 功能                 | 流式输出     | 部署方式                                    |
-| ---------------- | -------------------- | ------------ | ------------------------------------------- |
-| `OpenAI`       | 联网、新闻、内容爬取 | 流式、非流式 | Zeabur、本地部署、Cloudflare Worker、Vercel |
-| `Azure OpenAI` | 联网、新闻、内容爬取 | 流式、非流式 | Cloudflare Worker                           |
-| `Groq`         | 联网、新闻、内容爬取 | 流式、非流式 | Cloudflare Worker                           |
-| `Gemini`       | 联网                 | 流式、非流式 | Cloudflare Worker                           |
-| `Moonshot`     | 联网、新闻、内容爬取 | 部分流式、非流式       | Zeabur、本地部署、Cloudflare Worker（流式）、Vercel |
+| 上游模型(任意 OpenAI 兼容 API) | 功能                 | 流式输出     | 部署方式                                    |
+| ------------------------------ | -------------------- | ------------ | ------------------------------------------- |
+| `OpenAI` / `Gemini` / `Moonshot` / `Groq` / `DeepSeek` / `火山方舟` 等 | 联网、新闻、内容爬取 | 流式、非流式 | 本地、Zeabur、Cloudflare Worker、Vercel |
+| `Azure OpenAI`（`OPENAI_TYPE=azure`） | 联网、新闻、内容爬取 | 流式、非流式 | 本地、Cloudflare Worker                 |
 
 # 使用
 
@@ -74,11 +75,12 @@
 git clone https://github.com/fatwang2/search2ai
 ```
 
-2. 复制.env.template为.env，配置环境变量
-3. 进入api目录，运行程序，实时显示日志
+2. 复制 `.env.template` 为 `.env`，配置环境变量（搜索服务 key 必填）
+3. 安装依赖并启动服务
 
 ```
-cd api && nohup node index.js > output.log 2>&1 & tail -f output.log
+npm install
+npm start
 ```
 
 4. 端口3014，拼接后的完整地址如下，可根据客户端的需求配置apibase地址使用（如需https，需用nginx进行反代，网上教程很多）
@@ -89,15 +91,14 @@ http://localhost:3014/v1/chat/completions
 
 **Cloudflare Worker部署**
 
-1. 复制[search2openai.js](search2openai.js)或者[search2gemini.js](search2gemini.js)或者[search2groq.js](search2groq.js)的代码，不需要任何修改！在cloudflare的worker里部署，上线后的worker的地址可作为你接口调用时的自定义域名地址，注意拼接，worker地址仅代表v1前的部分
-2. 在worker中配置环境变量
-   ![效果示例](pictures/worker.png)
+1. 用 `wrangler.toml` 部署本仓库（入口为 `src/entry/worker.js`），或 `npm install -g wrangler && wrangler deploy`
+2. 在 Worker 后台 Settings → Variables 配置环境变量（`APIBASE`、`SEARCH_SERVICE`、`SEARCH1API_KEY` 等）
 3. worker里配置触发器-自定义域名，国内直接访问worker的地址可能会出问题，需要替换为自定义域名
    ![Alt text](pictures/域名.png)
 
 **Vercel部署**
 
-特别说明：vercel项目暂不支持流式输出，且有10s响应限制，实际使用体验不佳，放出来主要是想等大神给我pull request
+入口为 `src/entry/node-server.js`（见 `vercel.json`）。注意：Vercel Serverless 有 10s 响应限制，长回答可能超时，生产环境建议用 Zeabur 或本地部署。
 
 一键部署
 
@@ -109,27 +110,41 @@ http://localhost:3014/v1/chat/completions
 
 该项目提供了一些额外的配置项，通过环境变量设置：
 
-| 环境变量             | 是否必须 | 描述                                                                                                                  | 例子                                                                             |
-| -------------------- | -------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `SEARCH_SERVICE`   | Yes      | 你的搜索服务，选择什么服务，就需要配置什么服务的key | `search1api, google, bing, serpapi, serper, duckduckgo, searxng`               |
-| `APIBASE`          | No       | 三方代理地址                                                                                                         | `https://api.openai.com, https://api.moonshot.cn, https://api.groq.com/openai` |
-| `MAX_RESULTS`      | Yes      | 搜索结果条数                                                                                                          | `10`                                                                           |
-| `CRAWL_RESULTS`    | No       | 要进行深度搜索（搜索后获取网页正文）的数量，目前仅支持 search1api，深度速度会慢                                       | `1`                                                                            |
-| `SEARCH1API_KEY`   | No       | 如选search1api必填，我自己的搜索服务，注册免费领取 100 积分，点击[链接](https://www.search1api.com/?utm_source=search2ai)                                 | `xxx`                                                                          |
-| `BING_KEY`         | No       | 如选bing搜索必填，请自行搜索教程，点击[链接](https://www.microsoft.com/en-us/bing/apis/bing-web-search-api) 创建                                              | `xxx`                                                                          |
-| `GOOGLE_CX`        | No       | 如选Google搜索必填，Search engine ID，请自行搜索教程，点击[链接](https://programmablesearchengine.google.com/controlpanel/create) 创建                      | `xxx`                                                                          |
-| `GOOGLE_KEY`       | No       | 如选Google搜索必填，API key，点击[链接](https://console.cloud.google.com/apis/credentials) 创建                                              | `xxx`                                                                          |
-| `SERPAPI_KEY`      | No       | 如选serpapi必填，免费100次/月，点击[链接](https://serpapi.com/) 注册                                              | `xxx`                                                                          |
-| `SERPER_KEY`       | No       | 如选serper必填，6个月免费额度2500次，点击[链接](https://serper.dev/) 注册                                         | `xxx`                                                                          |
-| `SEARXNG_BASE_URL` | No       | 如选searxng必填，填写自建searXNG服务域名，需打开 json 模式，教程参考[链接](https://github.com/searxng/searxng) | `https://search.xxx.xxx`                                                                         |
-| `OPENAI_TYPE`      | No       | openai供给来源，默认为openai                                                                                          | `openai, azure`                                                                |
-| `RESOURCE_NAME`    | No       | 如选azure必填                                                                                                         | `xxxx`                                                                         |
-| `DEPLOY_NAME`      | No       | 如选azure必填                                                                                                         | `gpt-35-turbo`                                                                 |
-| `API_VERSION`      | No       | 如选azure必填                                                                                                         | `2024-02-15-preview`                                                           |
-| `AZURE_API_KEY`    | No       | 如选azure必填                                                                                                         | `xxxx`                                                                         |
-| `AUTH_KEYS`        | No       | 如果希望用户请求的时候单独定义授权码作为key，则需要填写，如选azure则必填                                              | `000,1111,2222`                                                                |
-| `OPENAI_API_KEY`   | No       | 如果希望用户请求openai的时候也单独定义授权码作为key，则需要填写                                                       | `sk-xxx`                                                                       |
+| 环境变量 | 是否必须 | 描述 | 例子 |
+| --- | --- | --- | --- |
+| `SEARCH_SERVICE` | Yes | 搜索服务，选择什么服务就配置对应 key | `search1api, google, bing, serpapi, serper, duckduckgo, searxng` |
+| `SEARCH1API_KEY` | Yes* | 选 search1api 时必填（推荐，本项目配套搜索服务，注册免费送 100 积分，点击[链接](https://www.search1api.com/?utm_source=search2ai)） | `xxx` |
+| `APIBASE` | No | 大模型上游地址，任意 OpenAI 兼容 API | `https://api.openai.com`、`https://ark.cn-beijing.volces.com/api/v3`、`https://generativelanguage.googleapis.com/v1beta/openai` |
+| `MAX_RESULTS` | No | 搜索结果条数 | `5` |
+| `CRAWL_RESULTS` | No | 深度搜索（搜索后获取网页正文）数量，目前仅 search1api 支持 | `1` |
+| `BING_KEY` | No | 选 bing 搜索时必填，点击[链接](https://www.microsoft.com/en-us/bing/apis/bing-web-search-api)创建 | `xxx` |
+| `GOOGLE_CX` | No | 选 google 搜索时必填，Search engine ID，点击[链接](https://programmablesearchengine.google.com/controlpanel/create)创建 | `xxx` |
+| `GOOGLE_KEY` | No | 选 google 搜索时必填，API key，点击[链接](https://console.cloud.google.com/apis/credentials)创建 | `xxx` |
+| `SERPAPI_KEY` | No | 选 serpapi 时必填，免费 100 次/月，点击[链接](https://serpapi.com/)注册 | `xxx` |
+| `SERPER_KEY` | No | 选 serper 时必填，6 个月免费 2500 次，点击[链接](https://serper.dev/)注册 | `xxx` |
+| `SEARXNG_BASE_URL` | No | 选 searxng 时必填，自建 SearXNG 服务域名，需打开 json 模式 | `https://search.xxx.xxx` |
+| `OPENAI_TYPE` | No | 上游类型 | `openai`（默认）、`azure` |
+| `RESOURCE_NAME` | No | 选 azure 时必填 | `xxxx` |
+| `DEPLOY_NAME` | No | 选 azure 时必填 | `gpt-35-turbo` |
+| `API_VERSION` | No | 选 azure 时必填 | `2024-02-15-preview` |
+| `AZURE_API_KEY` | No | 选 azure 时必填 | `xxxx` |
+| `AUTH_KEYS` | No | 允许的请求 key 列表（逗号分隔）。配置后请求必须使用列表中的 key，上游改用 `OPENAI_API_KEY` / `AZURE_API_KEY`，适合给他人分享你的服务 | `1111,2222` |
+| `OPENAI_API_KEY` | No | 配置 `AUTH_KEYS` 后，openai 上游使用的固定 key | `sk-xxx` |
 
+\* 也支持 `google / bing / serpapi / serper / searxng`，任选其一即可。
+
+# 本地测试
+
+```
+cp .env.local.example .env.local   # 填入大模型 API Key 与搜索服务 Key
+npm test                            # 或 node scripts/test-local.js
+```
+
+# 后续迭代
+
+- 升级 `ai` SDK 依赖（当前有高危漏洞待处理）
+- 为不支持 function calling 的模型增加"先搜后答"管线
+- 支持更多垂类搜索
 # 后续迭代
 
 - 修复Vercel项目流式输出问题

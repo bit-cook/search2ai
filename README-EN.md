@@ -9,6 +9,8 @@
 <a href="https://www.buymeacoffee.com/fatwang2" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 # Version Updates
+- V0.2.8, 20260802, full refactor: remove the per-model entry files (search2openai/groq/moonshot/gemini.js) and unify into one core (`src/core` + dual Node/Worker entries). Any OpenAI-compatible API works out of the box, including the official Gemini OpenAI-compatible endpoint, Moonshot, Groq, DeepSeek, and Volcano Ark. Streaming and non-streaming both supported. Added local test script `scripts/test-local.js`
+- V0.2.7, 20260802, back to maintenance: fix the `MAX_RESULTS is not defined` error for SearXNG search; fix duplicate `tool_call_id` caused by parallel streaming tool calls; remove the hardcoded third-party mirror and model name in the Gemini worker (new `API_BASE` env var, official endpoint by default); return readable errors and signup guidance when the Search1API key is missing or invalid; pass through real upstream status codes and reasons (401/429, etc.)
 - V0.2.6, 20240425, support the searxng search service, support the moonshot API in stream mode
 - V0.2.5, 20240425, open source the code for the search api
 - V0.2.4, 20240424, support for Groq in Cloudflare Worker
@@ -21,7 +23,9 @@ For more historical updates, please see [Version History](https://github.com/fat
 
 # S2A
 
-Help your LLM API support networking, search, news, web page summarization, has supported OpenAI, Gemini, Moonshot, the big model will be based on your input to determine whether the network, not every time the network search, do not need to install any plug-ins, do not need to replace the key, directly in your commonly used OpenAI/Gemini three-way client replacement of custom You can directly replace the customized address in your usual OpenAI/Gemini three-way client, and also support self-deployment, which will not affect the use of other functions, such as drawing, voice, etc.
+Give your LLM API web access: search, news, and page summarization. The model decides whether to search based on your input — it does not search on every request. No plugins, no key replacement: just point your client's custom base URL to your deployment. Self-hosting is fully supported and other features (image generation, voice, etc.) are unaffected.
+
+Works with any OpenAI-compatible API: OpenAI, Gemini (official OpenAI-compatible endpoint), Moonshot, Groq, DeepSeek, Volcano Ark (Ark), Azure OpenAI, etc. — switch via environment variables, one codebase for all.
 
 <table>
     <tr>
@@ -36,13 +40,10 @@ Help your LLM API support networking, search, news, web page summarization, has 
 
 # Features
 
-| Model            | Features              | Stream           | Deployments                                         |
-| ---------------- | --------------------- | ---------------- | --------------------------------------------------- |
-| `OpenAI`       | search, news, crawler | stream, unstream | Zeabur, Local deployment, Cloudflare Worker, Vercel |
-| `Azure OpenAI` | search, news, crawler | stream, unstream | Cloudflare Worker                                   |
-| `Groq`         | search, news, crawler | stream, unstream | Cloudflare Worker                                   |
-| `Gemini`       | search                | stream, unstream | Cloudflare Worker                                   |
-| `Moonshot`     | search, news, crawler | stream(only on cf), unstream         | Zeabur, Local deployment, Cloudflare Worker(stream), Vercel |
+| Upstream Model (any OpenAI-compatible API) | Features              | Stream           | Deployments                                         |
+| ------------------------------------------ | --------------------- | ---------------- | --------------------------------------------------- |
+| `OpenAI` / `Gemini` / `Moonshot` / `Groq` / `DeepSeek` / `Volcano Ark` etc. | search, news, crawler | stream, unstream | Local, Zeabur, Cloudflare Worker, Vercel |
+| `Azure OpenAI` (`OPENAI_TYPE=azure`) | search, news, crawler | stream, unstream | Local, Cloudflare Worker                 |
 
 # Usage
 
@@ -72,11 +73,12 @@ To keep the project updated, it is recommended to fork this repository first, th
 git clone https://github.com/fatwang2/search2ai
 ```
 
-2. Copy .env.template as .env, configure environment variables
-3. Enter the api directory, run the program, and display the log in real-time
+2. Copy `.env.template` as `.env`, configure environment variables (search service key is required)
+3. Install dependencies and start
 
 ```
-cd api && nohup node index.js > output.log 2>&1 & tail -f output.log
+npm install
+npm start
 ```
 
 4. Port 3014, the complete address after concatenation is as follows, can be configured according to the client's requirements for the apibase address (if https is required, need to use nginx for reverse proxy, many tutorials online)
@@ -87,8 +89,8 @@ http://localhost:3014/v1/chat/completions
 
 **Cloudflare worker**
 
-1. Copy the code of [search2openai.js](search2openai.js), or [search2gemini.js](search2gemini.js), or [search2groq.js](search2groq.js), no modifications needed! Deploy in cloudflare's worker, after going online, the worker's address can be used as your interface call's custom domain address, note the concatenation, worker address only represents the part before v1
-2. Configure variables in the worker（only openai）
+1. Deploy this repo with `wrangler.toml` (entry: `src/entry/worker.js`), or `npm install -g wrangler && wrangler deploy`
+2. Configure variables in Worker Settings → Variables (`APIBASE`, `SEARCH_SERVICE`, `SEARCH1API_KEY`, etc.)
    ![Effect Example](https://github.com/user-attachments/assets/05746a9d-0772-4b60-a228-63396fa1614a)
 3. Configure triggers - custom domain in the worker, direct access to the worker's address in China might have issues, need to replace with custom domain
    ![Alt text](https://github.com/user-attachments/assets/01f5b013-e758-438e-ab53-2065892b0a24)
@@ -96,7 +98,7 @@ http://localhost:3014/v1/chat/completions
 
 **Vercel**
 
-Special note: Vercel project does not support streaming output and has a 10s response limit, actual user experience is poor, released mainly for experts to pull request
+Entry: `src/entry/node-server.js` (see `vercel.json`). Note: Vercel Serverless has a 10s response limit, so long responses may time out; use Zeabur or a local server for production.
 
 One-click deployment
 
@@ -106,29 +108,43 @@ To ensure updates, you can also first fork this project and then deploy it on Ve
 
 # Environment Variables
 
-This project provides some additional configuration options, which can be set through environment variables:
+Configuration is done through environment variables:
 
 | Environment Variable | Required    | Description                                                                                                                                                                 | Example                                                                          |
 | -------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `SEARCH_SERVICE`   | Yes         | Your search service. The key of the service you choose needs to be configured.                              | `search1api, google, bing, serpapi, serper, duckduckgo, searxng`                        |
-| `APIBASE`          | No          | Third-party proxy address.                                                                                                                                                  | `https://api.openai.com, https://api.moonshot.cn, https://api.groq.com/openai` |
-| `MAX_RESULTS`      | Yes          | Number of search results.                                                                                                                                                   | `10`                                                                           |
-| `CRAWL_RESULTS`    | No          | The number of deep searches (retrieve the main text of the webpage after searching). Currently only supports search1api, deep search will be slow.                          | `1`                                                                            |
-| `SEARCH1API_KEY`   | No       | Required if using search1api. Free 100 credits now. Click [here](https://www.search1api.com/?utm_source=search2ai) to register                                | `xxx`                                                                          |
-| `BING_KEY`         | No       | Required if using Bing search. Please search for tutorials. Click [here](https://www.microsoft.com/en-us/bing/apis/bing-web-search-api) to create                                              | `xxx`                                                                          |
-| `GOOGLE_CX`        | No       | Required if using Google search. Search engine ID. Please search for tutorials. Click [here](https://programmablesearchengine.google.com/controlpanel/create) to create                      | `xxx`                                                                          |
+| `SEARCH_SERVICE`   | Yes         | Search service. Configure the key of the service you choose.                              | `search1api, google, bing, serpapi, serper, duckduckgo, searxng`                        |
+| `SEARCH1API_KEY`   | Yes*        | Required if using search1api (recommended companion search service). Free 100 credits now. Click [here](https://www.search1api.com/?utm_source=search2ai) to register | `xxx` |
+| `APIBASE`          | No          | Upstream LLM base URL. Any OpenAI-compatible API.                                                                                                                                                  | `https://api.openai.com`, `https://ark.cn-beijing.volces.com/api/v3`, `https://generativelanguage.googleapis.com/v1beta/openai` |
+| `MAX_RESULTS`      | No          | Number of search results.                                                                                                                                                   | `5`                                                                           |
+| `CRAWL_RESULTS`    | No          | Number of deep searches (retrieve webpage text after searching). Currently only supports search1api.                          | `1`                                                                            |
+| `BING_KEY`         | No       | Required if using Bing search. Click [here](https://www.microsoft.com/en-us/bing/apis/bing-web-search-api) to create                                              | `xxx`                                                                          |
+| `GOOGLE_CX`        | No       | Required if using Google search. Search engine ID. Click [here](https://programmablesearchengine.google.com/controlpanel/create) to create                      | `xxx`                                                                          |
 | `GOOGLE_KEY`       | No       | Required if using Google search. API key. Click [here](https://console.cloud.google.com/apis/credentials) to create                                              | `xxx`                                                                          |
 | `SERPAPI_KEY`      | No       | Required if using serpapi. Free 100 requests/month. Click [here](https://serpapi.com/) to register                                              | `xxx`                                                                          |
 | `SERPER_KEY`       | No       | Required if using serper. Free 2500 requests for 6 months. Click [here](https://serper.dev/) to register                                         | `xxx`                                                                          |
-| `SEARXNG_BASE_URL` | No       | Required if using searxng. Fill in your self-hosted searXNG service domain. JSON mode must be enabled. Tutorial: [link](https://github.com/searxng/searxng) | `https://search.xxx.xxx`          
-| `OPENAI_TYPE`      | No          | OpenAI provider source, default is openai                                                                                                                                   | `openai, azure`                                                                |
-| `RESOURCE_NAME`    | Conditional | Required if azure is selected                                                                                                                                               | `xxxx`                                                                         |
-| `DEPLOY_NAME`      | Conditional | Required if azure is selected                                                                                                                                               | `gpt-35-turbo`                                                                 |
-| `API_VERSION`      | Conditional | Required if azure is selected                                                                                                                                               | `2024-02-15-preview`                                                           |
-| `AZURE_API_KEY`    | Conditional | Required if azure is selected                                                                                                                                               | `xxxx`                                                                         |
-| `AUTH_KEYS`        | No          | If you want users to define a separate authorization code as a key when making requests, you need to fill this in. Required if azure is selected                            | `000,1111,2222`                                                                |
-| `OPENAI_API_KEY`   | No          | If you want users to define a separate authorization code as a key when requesting openai, you need to fill this in                                                         | `sk-xxx`                                                                       |
+| `SEARXNG_BASE_URL` | No       | Required if using searxng. Self-hosted SearXNG domain, JSON mode must be enabled. | `https://search.xxx.xxx` |
+| `OPENAI_TYPE`      | No          | Upstream type. Default `openai`.                                                                                                                                   | `openai, azure`                                                                |
+| `RESOURCE_NAME`    | No       | Required if azure is selected                                                                                                                                               | `xxxx`                                                                         |
+| `DEPLOY_NAME`      | No       | Required if azure is selected                                                                                                                                               | `gpt-35-turbo`                                                                 |
+| `API_VERSION`      | No       | Required if azure is selected                                                                                                                                               | `2024-02-15-preview`                                                           |
+| `AZURE_API_KEY`    | No       | Required if azure is selected                                                                                                                                               | `xxxx`                                                                         |
+| `AUTH_KEYS`        | No       | Comma-separated allowlist of request keys. When set, requests must use one of these keys and the upstream uses `OPENAI_API_KEY` / `AZURE_API_KEY` instead — useful when sharing your service | `1111,2222` |
+| `OPENAI_API_KEY`   | No       | Fixed upstream key for openai when `AUTH_KEYS` is set                                                        | `sk-xxx` |
 
+\* `google / bing / serpapi / serper / searxng` are also supported — configure the key for whichever one you pick.
+
+# Local Testing
+
+```
+cp .env.local.example .env.local   # fill in your LLM API key and search service key
+npm test                            # or node scripts/test-local.js
+```
+
+# Future Iterations
+
+- Upgrade the `ai` SDK dependency (critical vulnerability pending)
+- Add a "search-then-answer" pipeline for models without function calling support
+- Support more vertical searches
 # Future Iterations
 
 - Fix streaming output issues in Vercel project
