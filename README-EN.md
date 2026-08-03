@@ -69,7 +69,7 @@ Fork the repo first if you want to keep it updated.
 | --- | --- | --- |
 | `SEARCH_SERVICE` | Yes | Search service: `search1api` (recommended, 100 free credits), `google`, `bing`, `serpapi`, `serper`, `searxng` |
 | `SEARCH1API_KEY` | Conditional | Required when using search1api. [Register](https://www.search1api.com/?utm_source=search2ai) |
-| `APIBASE` | No | Upstream LLM base URL, any OpenAI-compatible API. Default `https://api.openai.com` |
+| `APIBASE` | No | Upstream LLM base URL, any OpenAI-compatible API. Default `https://api.openai.com`. **No need to append `/v1` manually**: bases ending in `/v1`, `/v3`, etc. are used as-is; bases ending in `/openai` get `/v1` appended; anything else gets `/v1` appended (e.g. `https://ark.cn-beijing.volces.com/api/v3` → `.../api/v3/chat/completions`) |
 | `AUTH_KEYS` | No | Comma-separated allowlist of request keys. When set, upstream uses `OPENAI_API_KEY` |
 | `OPENAI_API_KEY` | No | Fixed upstream key for openai when `AUTH_KEYS` is set |
 | `OPENAI_TYPE` | No | `openai` (default) or `azure`; azure needs `RESOURCE_NAME` / `DEPLOY_NAME` / `API_VERSION` / `AZURE_API_KEY` |
