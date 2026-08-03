@@ -69,7 +69,7 @@ npm start                # 默认端口 3014
 | --- | --- | --- |
 | `SEARCH_SERVICE` | 是 | 搜索服务：`search1api`（推荐，注册送 100 积分）、`google`、`bing`、`serpapi`、`serper`、`searxng` |
 | `SEARCH1API_KEY` | 看情况 | 选 search1api 时必填，[注册](https://www.search1api.com/?utm_source=search2ai) |
-| `APIBASE` | 否 | 大模型上游地址，任意 OpenAI 兼容 API，默认 `https://api.openai.com`。**无需手动加 `/v1`**：以 `/v1`、`/v3` 等版本号结尾的原样使用，以 `/openai` 结尾的自动补 `/v1`，其他自动追加 `/v1`（如 `https://ark.cn-beijing.volces.com/api/v3` → `.../api/v3/chat/completions`） |
+| `APIBASE` | 否 | 大模型上游完整前缀（host + 版本段），与 OpenAI SDK 的 `baseURL` 语义一致，填 provider 文档里的地址，默认 `https://api.openai.com/v1`。例：`https://api.openai.com/v1`、`https://ark.cn-beijing.volces.com/api/v3`、`https://generativelanguage.googleapis.com/v1beta/openai` |
 | `AUTH_KEYS` | 否 | 允许的请求 key 列表（逗号分隔），配置后上游改用 `OPENAI_API_KEY` |
 | `OPENAI_API_KEY` | 否 | 配置 `AUTH_KEYS` 后，openai 上游使用的固定 key |
 | `OPENAI_TYPE` | 否 | `openai`（默认）或 `azure`；选 azure 需配 `RESOURCE_NAME` / `DEPLOY_NAME` / `API_VERSION` / `AZURE_API_KEY` |

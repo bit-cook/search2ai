@@ -34,7 +34,7 @@ function resolveApiKey(requestKey) {
 
 /**
  * 构造 chat/completions 请求参数(headers/url/body)。
- * openai: APIBASE + /v1/chat/completions, Bearer 头
+ * openai: APIBASE + /chat/completions, Bearer 头(APIBASE 已含版本段, 与 SDK 一致)
  * azure:  https://{RESOURCE_NAME}.openai.azure.com/openai/deployments/{DEPLOY_NAME}/chat/completions?api-version={API_VERSION}, api-key 头
  */
 function buildChatRequestOptions(apiKey, stream) {
@@ -51,7 +51,7 @@ function buildChatRequestOptions(apiKey, stream) {
     url = `https://${resource}.openai.azure.com/openai/deployments/${deploy}/chat/completions?api-version=${ver}`;
     headers['api-key'] = cfg.azureApiKey || apiKey;
   } else {
-    url = joinApiUrl(cfg.apiBase, '/v1/chat/completions');
+    url = joinApiUrl(cfg.apiBase, '/chat/completions');
     headers.Authorization = `Bearer ${apiKey}`;
   }
   return { url, headers };

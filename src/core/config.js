@@ -4,26 +4,19 @@
  * 所有环境变量在此集中定义默认值, 业务代码不再直接读环境变量。
  */
 
-// 规整 API Base: 兼容"根地址"(https://api.openai.com)与"已含 /v1 等版本段"的地址
-// (如火山方舟 /api/v3、Gemini OpenAI 兼容端点 /v1beta/openai), 统一返回拼好 /v1 后的 base
+// APIBASE 语义与 OpenAI SDK 一致: 填 provider 文档里的完整前缀(host + 版本段),
+// 如 https://api.openai.com/v1、https://ark.cn-beijing.volces.com/api/v3、
+// https://generativelanguage.googleapis.com/v1beta/openai。不自动补版本号。
 function normalizeApiBase(apiBase) {
-  let base = String(apiBase || '').replace(/\/+$/, '');
-  if (!base) return 'https://api.openai.com/v1';
-  if (/\/v\d+$/i.test(base)) return base;
-  if (/\/openai$/i.test(base)) return base + '/v1';
-  return base + '/v1';
+  const base = String(apiBase || '').replace(/\/+$/, '');
+  return base || 'https://api.openai.com/v1';
 }
 
-// 拼接 base 与请求路径: 规整后的 base 已含 /v1, 请求路径也可能含 /v1(如 /v1/models), 去掉重复段
+// 拼接 base 与请求路径(与 OpenAI SDK 一致: baseURL + 端点路径)
 function joinApiUrl(apiBase, pathname) {
-  let base = String(apiBase || '').replace(/\/+$/, '');
-  let path = String(pathname || '');
-  const baseHasV = /\/v\d+$/i.test(base);
-  const pathHasV = /^\/v\d+\//i.test(path);
-  if (baseHasV && pathHasV) {
-    return base + path.replace(/^\/v\d+/, '');
-  }
-  return base + path;
+  const base = String(apiBase || '').replace(/\/+$/, '');
+  const path = String(pathname || '').replace(/^\/+/, '');
+  return `${base}/${path}`;
 }
 
 function getEnv(name) {
